@@ -1,0 +1,1630 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Priority Sorter</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 24 24' fill='none' stroke='%235E6AD2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='12 2 2 7 12 12 22 7 12 2'/%3E%3Cpolyline points='2 12 12 17 22 12'/%3E%3Cpolyline points='2 17 12 22 22 17'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg-page: #121416;
+  --bg-card: #1A1C1E;
+  --bg-surface: #0A0B0C;
+  --bg-surface-hover: #151618;
+  --bg-nav: #060708;
+  --border: #23252A;
+  --border-hover: #2E3035;
+  --text: #F7F8F8;
+  --text-secondary: #8A8F98;
+  --accent: #5E6AD2;
+  --accent-hover: #828FFF;
+  --accent-muted: rgba(94,106,210,0.12);
+  --danger: #dc2626;
+  --danger-muted: rgba(220,38,38,0.12);
+  --radius: 10px;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, sans-serif;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg-page);color:var(--text);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+.layout{display:flex;flex:1;min-height:0}
+.sidebar{width:240px;background:var(--bg-nav);display:flex;flex-direction:column;flex-shrink:0;padding:20px 12px 12px;gap:4px;overflow-y:auto;transition:width .2s}
+.sidebar-header{display:flex;align-items:center;padding:4px 8px 14px;gap:10px;margin-bottom:10px}
+.sidebar:not(.collapsed) .sidebar-logo{order:-1}
+.sidebar-logo{font-size:16px;font-weight:700;display:flex;align-items:center;gap:10px;color:var(--text);letter-spacing:-0.02em}
+.sidebar-logo i{color:var(--accent);width:22px;height:22px}
+.board-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;min-height:0;padding:2px 0}
+.board-item{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text-secondary);transition:all .12s}
+.board-item:hover{background:var(--bg-surface);color:var(--text)}
+.board-item.active{background:var(--bg-surface);color:var(--text)}
+.board-item-icon{width:16px;height:16px;flex-shrink:0;color:var(--text-secondary);transition:color .12s}
+.board-item-menu-wrapper{position:relative;flex-shrink:0;display:none}
+.board-item:hover .board-item-menu-wrapper{display:block}
+.board-item-menu{width:22px;height:22px;border-radius:4px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s,color .12s}
+.board-item-menu:hover{background:var(--bg-surface-hover);color:var(--text)}
+.board-menu-dropdown{display:none;position:absolute;right:0;top:100%;background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:30;min-width:130px;overflow:hidden}
+.board-menu-dropdown.open{display:flex;flex-direction:column}
+.board-menu-dropdown button{display:flex;align-items:center;gap:6px;padding:6px 10px;border:none;background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;transition:background .12s,color .12s;text-align:left;width:100%}
+.board-menu-dropdown button:hover{background:var(--bg-surface-hover);color:var(--text)}
+.board-menu-dropdown .menu-del:hover{color:var(--danger);background:var(--danger-muted)}
+.board-menu-color{display:flex;align-items:center;gap:8px;padding:6px 10px;border-top:1px solid var(--border)}
+.board-menu-color input[type=color]{width:24px;height:24px;border:none;border-radius:4px;cursor:pointer;padding:0;background:none}
+.board-item-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidebar-spacer{flex:1}
+.sidebar-divider{border-top:1px solid var(--border);margin:8px 0 4px}
+.sidebar-btn{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;border:none;background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;transition:all .12s;width:100%;text-align:left}
+.sidebar-btn:hover{background:var(--bg-surface);color:var(--text)}
+#newBoardBtn{border:1px solid var(--border)}
+.sidebar-btn i{flex-shrink:0}
+
+/* Collapsed sidebar */
+.sidebar.collapsed{width:56px;overflow:hidden}
+.sidebar.collapsed .sidebar-logo span{display:none}
+.sidebar.collapsed .sidebar-header{flex-direction:column;gap:24px;padding:20px 0 6px;align-items:center}
+.sidebar.collapsed .sidebar-logo span{display:none}
+.sidebar.collapsed .sidebar-logo{order:0}
+.sidebar.collapsed .sidebar-collapse-btn{opacity:1;position:static;width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:var(--bg-nav);z-index:10;display:flex;align-items:center;justify-content:center;transform:none;margin-left:0}
+.sidebar.collapsed .board-item-name{display:none}
+.sidebar.collapsed .board-item-menu-wrapper{display:none}
+.sidebar.collapsed .board-item{justify-content:center;padding:7px 0}
+.sidebar.collapsed .sidebar-btn span{display:none}
+.sidebar.collapsed .sidebar-btn{justify-content:center;padding:7px 0}
+.sidebar.collapsed .sidebar-divider{display:none}
+.sidebar.collapsed .board-list{padding:2px 0;align-items:center}
+.main-area{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{display:flex;justify-content:space-between;align-items:center;background:var(--bg-page);padding:12px 24px;flex-wrap:wrap;gap:10px;flex-shrink:0;border-bottom:1px solid var(--border)}
+.topbar-left{display:flex;align-items:center;gap:8px}
+.hamburger{display:none;width:32px;height:32px;border-radius:6px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;align-items:center;justify-content:center;flex-shrink:0;transition:background .12s,color .12s}
+.hamburger:hover{background:var(--bg-surface-hover);color:var(--text)}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:49}
+.sidebar-overlay.open{display:block}
+.sidebar-collapse-btn{width:24px;height:24px;border-radius:4px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto;transition:background .12s,color .12s;opacity:0}
+.sidebar-header:hover .sidebar-collapse-btn{opacity:1}
+.sidebar-collapse-btn:hover{background:var(--bg-surface-hover);color:var(--text)}
+.app{padding:24px 24px 0;display:flex;flex-direction:column;flex:1;width:100%}
+.theme-toggle{background:none;border:none;color:var(--text-secondary);cursor:pointer;padding:4px 6px;border-radius:6px;font-size:16px;transition:color .12s,background .12s}
+.theme-toggle:hover{color:var(--text);background:var(--bg-surface-hover)}
+.controls{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.dropdown-wrap{position:relative;display:inline-flex}
+.dropdown-menu{display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:30;min-width:160px;overflow:hidden}
+.dropdown-menu.open{display:flex;flex-direction:column}
+.dropdown-menu button{display:flex;align-items:center;gap:8px;padding:8px 12px;border:none;background:transparent;color:var(--text-secondary);font-size:13px;cursor:pointer;transition:background .12s,color .12s;text-align:left;width:100%}
+.dropdown-menu button:hover{background:var(--bg-surface-hover);color:var(--text)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;border:1px solid var(--border);background:var(--bg-surface);font-size:13px;font-weight:500;cursor:pointer;transition:all .12s;color:var(--text);white-space:nowrap;line-height:1.3}
+.btn:hover{background:var(--bg-surface-hover);border-color:var(--border-hover)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn-ghost{border-color:transparent;background:transparent;color:var(--text-secondary)}
+.btn-ghost:hover{border-color:var(--border);background:var(--bg-surface-hover);color:var(--text)}
+.btn-export{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-export:hover{background:var(--accent-hover)}
+.columns{display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:1fr;gap:16px;flex:1}
+.col{background:var(--bg-surface);border-radius:6px;display:flex;flex-direction:column;transition:border-color .12s,background .12s}
+.col.drag-over{outline:2px solid var(--accent);outline-offset:-2px}
+.col-header{padding:14px 16px 12px;font-weight:500;font-size:13px;display:flex;align-items:center;gap:8px;letter-spacing:-0.01em}
+.col-header .count{font-weight:400;color:var(--text-secondary);font-size:12px;margin-left:auto}
+.col-header-add{width:20px;height:20px;border-radius:4px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0;opacity:1}
+.col-header-add:hover{background:var(--bg-surface-hover);color:var(--text)}
+.col-header .col-icon{width:16px;height:16px;flex-shrink:0}
+.col-body{padding:12px;flex:1;display:flex;flex-direction:column;gap:8px;min-height:80px}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;font-size:13px;transition:all .12s;overflow:hidden;user-select:none;box-shadow:0 1px 3px rgba(0,0,0,0.3)}
+.card:hover{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 4px 12px rgba(0,0,0,0.5)}
+
+
+.card-main{padding:9px 10px;display:flex;align-items:center;gap:6px;cursor:grab;word-break:break-word;line-height:1.4}
+.card-main:active{cursor:grabbing}
+.card-text{flex:1;min-width:0}
+.card-icon{width:14px;height:14px;flex-shrink:0}
+.card-actions{display:flex;gap:2px;flex-shrink:0}
+.card-actions .del{width:24px;height:24px;border-radius:4px;border:none;background:transparent;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s,color .12s,opacity .12s;line-height:1;color:var(--text-secondary);opacity:0}
+.card:hover .card-actions .del{opacity:1}
+.card-actions .del:hover{background:var(--danger-muted);color:var(--danger)}
+.card-note-bar{display:flex;padding:2px 8px 6px 8px;cursor:grab}
+.note-toggle{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:5px;border:1px solid transparent;background:transparent;font-size:12px;font-weight:500;cursor:pointer;transition:all .12s;color:var(--text-secondary);line-height:1.3;white-space:nowrap}
+.note-toggle:hover{background:var(--bg-surface-hover);border-color:var(--border);color:var(--text)}
+.note-toggle.has-note{color:var(--accent)}
+.note-toggle.has-note:hover{border-color:var(--accent)}
+.card-note{display:none;padding:4px 10px 10px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--text-secondary);line-height:1.5}
+.card[data-expanded="1"] .card-note{display:flex;flex-direction:column;gap:6px}
+.card-empty-notes{padding:6px 0;color:var(--text-secondary);font-size:12px;font-style:italic}
+.note-item{display:flex;align-items:flex-start;gap:6px;padding:4px 0;border-bottom:1px solid var(--border)}
+.note-item:last-child{border-bottom:none}
+.note-item-text{flex:1;white-space:pre-wrap;word-break:break-word;padding:2px 0}
+.note-actions-wrapper{position:relative;flex-shrink:0}
+.note-menu-btn{width:22px;height:22px;border-radius:4px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s,color .12s}
+.note-menu-btn:hover{background:var(--bg-surface-hover);color:var(--text)}
+.note-menu-dropdown{display:none;position:absolute;right:0;top:100%;background:var(--bg-surface);border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.4);z-index:20;min-width:100px;overflow:hidden}
+.note-menu-dropdown.open{display:flex;flex-direction:column}
+.note-menu-dropdown button{display:flex;align-items:center;gap:6px;padding:6px 10px;border:none;background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;transition:background .12s,color .12s;text-align:left;width:100%}
+.note-menu-dropdown button:hover{background:var(--bg-surface-hover);color:var(--text)}
+.note-menu-dropdown .note-del:hover{color:var(--danger);background:var(--danger-muted)}
+.add-note-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;margin-top:2px;border-radius:5px;border:1px dashed var(--border);background:transparent;font-size:12px;font-weight:500;cursor:pointer;transition:all .12s;color:var(--text-secondary);align-self:flex-start}
+.add-note-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-muted)}
+.inline-note-area{display:flex;gap:4px;align-items:flex-start}
+.inline-note-area textarea{flex:1;padding:6px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg-page);color:var(--text);font-size:12px;font-family:inherit;resize:none;outline:none;min-height:32px;transition:border-color .12s}
+.inline-note-area textarea:focus{border-color:var(--border-hover)}
+.inline-note-check{width:24px;height:24px;border-radius:4px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0;margin-top:4px}
+.inline-note-check:hover{background:var(--bg-surface-hover);color:var(--text)}
+.empty-state{padding:20px;text-align:center;color:var(--text-secondary);font-size:12px;pointer-events:none;border:1px dashed var(--border);border-radius:6px;margin:4px}
+.col-add-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;border-radius:6px;border:1px dashed transparent;background:transparent;font-size:13px;font-weight:500;cursor:pointer;transition:all .12s;color:var(--text-secondary);opacity:0;margin-top:4px}
+.col:hover .col-add-btn{opacity:1}
+.col-add-btn:hover{border-color:var(--border);background:var(--bg-surface-hover);color:var(--text)}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.dialog-box{background:var(--bg-surface);border-radius:12px;padding:20px;max-width:520px;width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.5);max-height:90vh;overflow-y:auto;border:1px solid var(--border)}
+.ctx-menu{position:fixed;z-index:200;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:240px;max-height:80vh;overflow-y:auto}
+.ctx-section{padding:10px 12px}
+.ctx-section+.ctx-section{border-top:1px solid var(--border)}
+.ctx-section-label{font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.ctx-input{flex:1;padding:6px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg-page);color:var(--text);font-size:13px;outline:none}
+.ctx-input:focus{border-color:var(--accent)}
+.ctx-check{width:28px;height:28px;border-radius:5px;border:none;background:transparent;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s,color .12s}
+.ctx-check:hover{background:var(--accent-muted);color:var(--accent)}
+.ctx-preview-row{display:flex;align-items:center;gap:8px}
+.ctx-preview-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;color:var(--text)}
+.ctx-preview-swatch{width:18px;height:18px;border-radius:4px;flex-shrink:0;border:1px solid rgba(255,255,255,.1)}
+.ctx-preview-hex{font-size:12px;color:var(--text-secondary);font-family:monospace;flex:1}
+.ctx-change-btn{padding:4px 10px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);font-size:12px;cursor:pointer;transition:all .12s}
+.ctx-change-btn:hover{background:var(--bg-surface-hover);color:var(--text);border-color:var(--text-secondary)}
+
+/* Icon picker dialog */
+.ctx-icon-search{width:100%;padding:6px 8px;border-radius:5px;border:1px solid var(--border);background:var(--bg-page);color:var(--text);font-size:12px;outline:none;box-sizing:border-box}
+.ctx-icon-search:focus{border-color:var(--accent)}
+.ctx-icon-grid{display:flex;flex-wrap:wrap;gap:4px;max-height:180px;overflow-y:auto;margin-top:8px}
+.ctx-icon-btn{width:30px;height:30px;border-radius:5px;border:1px solid transparent;background:var(--bg-page);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;color:var(--text-secondary)}
+.ctx-icon-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-muted)}
+.ctx-icon-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-muted)}
+
+/* Color picker dialog */
+.ctx-color-row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.ctx-color-picker{width:36px;height:32px;border:none;border-radius:4px;cursor:pointer;padding:0;background:none}
+.ctx-color-val{font-size:12px;color:var(--text-secondary);font-family:monospace}
+.ctx-swatches{display:flex;gap:4px;flex-wrap:wrap}
+.ctx-swatch{width:28px;height:28px;border-radius:5px;border:2px solid transparent;cursor:pointer;transition:border-color .12s}
+.ctx-swatch:hover,.ctx-swatch.active{border-color:var(--text)}
+.dialog-box h2{margin-bottom:2px;font-size:16px;font-weight:600;color:var(--text)}
+.dialog-box .sub{margin-bottom:14px;font-size:13px;color:var(--text-secondary)}
+.dialog-box input[type=text]{width:100%;padding:9px 12px;border-radius:7px;border:1px solid var(--border);background:var(--bg-page);color:var(--text);font-size:14px;outline:none;transition:border-color .12s}
+.dialog-box input[type=text]:focus{border-color:var(--accent)}
+.dialog-box .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.tabs{display:flex;gap:0;margin-bottom:12px;border-bottom:1px solid var(--border)}
+.tab{padding:7px 14px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--text-secondary);border-bottom:2px solid transparent;transition:all .12s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.dialog-box textarea{width:100%;height:170px;padding:10px;border-radius:7px;border:1px solid var(--border);background:var(--bg-page);color:var(--text);font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;outline:none;margin-bottom:4px}
+.dialog-box textarea:focus{border-color:var(--accent)}
+.dialog-box .hint{font-size:12px;color:var(--text-secondary);margin-bottom:8px}
+.dialog-box .error{font-size:13px;color:#f87171;background:rgba(248,113,113,0.1);padding:8px 12px;border-radius:6px;margin-bottom:8px;display:none}
+#noteTextarea{font-family:var(--font)}
+.icon-xs{width:14px;height:14px;display:inline-block;vertical-align:middle}
+.icon-sm{width:16px;height:16px;display:inline-block;vertical-align:middle}
+
+@media(max-width:1400px){
+.columns{grid-template-columns:repeat(4,1fr)}
+}
+@media(max-width:1000px){
+.columns{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:700px){
+.columns{grid-template-columns:1fr 1fr}
+}
+@media(max-width:500px){
+.columns{grid-template-columns:1fr}
+.app{padding:12px}
+.dialog-box{padding:20px}
+.dialog-box h2{font-size:14px}
+}
+
+/* Mobile: sidebar as drawer */
+@media(max-width:768px){
+.sidebar{position:fixed;top:0;left:0;bottom:0;z-index:50;transform:translateX(-100%);transition:transform .22s}
+.sidebar.open{transform:translateX(0)}
+.sidebar-overlay.open{display:block}
+.hamburger{display:flex}
+.sidebar-collapse-btn{display:none}
+.topbar{padding:12px 16px}
+.app{padding:16px 16px 0}
+.columns{gap:12px}
+}
+</style>
+</head>
+<body>
+
+<div class="overlay" id="addOverlay">
+<div class="dialog-box" style="max-width:400px">
+<h2>Add a card</h2>
+<p class="sub">Type the card text and click Add.</p>
+<input type="text" id="addInput" placeholder="What should this card say?" autocomplete="off">
+<div class="btns">
+<button class="btn" id="addCancel">Cancel</button>
+<button class="btn btn-primary" id="addConfirm">Add</button>
+</div>
+</div>
+</div>
+
+<div class="overlay" id="bulkOverlay">
+<div class="dialog-box">
+<h2>Bulk import cards</h2>
+<p class="sub">Add multiple cards at once.</p>
+<div class="tabs">
+<button class="tab active" data-tab="text">One per line</button>
+<button class="tab" data-tab="json">JSON array</button>
+</div>
+
+<div class="tab-content active" id="tab-text">
+<textarea id="bulkText" placeholder="Card one&#10;Card two&#10;Card three"></textarea>
+<p class="hint">Paste one card per line. Empty lines are ignored.</p>
+</div>
+
+<div class="tab-content" id="tab-json">
+<textarea id="bulkJson" placeholder='[&#10;  "Example card 1",&#10;  "Example card 2"&#10;]'>[
+  "Improve onboarding flow",
+  "Add search functionality",
+  "Mobile responsive layout",
+  "Dark mode toggle"
+]</textarea>
+<p class="hint">JSON array of strings. <a href="#" id="downloadTemplate" style="color:var(--accent)">Download template</a></p>
+</div>
+
+<div class="error" id="bulkError"></div>
+<div class="btns">
+<button class="btn" id="bulkCancel">Cancel</button>
+<button class="btn btn-primary" id="bulkConfirm">Import</button>
+</div>
+</div>
+</div>
+
+
+<div class="overlay" id="noteOverlay">
+<div class="dialog-box" style="max-width:450px">
+<h2>Edit note</h2>
+<p class="sub" id="noteCardLabel">for: </p>
+<textarea id="noteTextarea" placeholder="Optional context or notes about this card..." style="height:140px"></textarea>
+<div class="btns">
+<button class="btn" id="noteCancel">Cancel</button>
+<button class="btn btn-primary" id="noteSave">Save note</button>
+</div>
+</div>
+</div>
+
+<div class="overlay" id="boardPromptOverlay">
+<div class="dialog-box" style="max-width:360px">
+<h2 id="boardPromptTitle">New Board</h2>
+<p class="sub" id="boardPromptSub">Enter a name for the board.</p>
+<input type="text" id="boardPromptInput" placeholder="Board name" autocomplete="off">
+<div class="btns">
+<button class="btn" id="boardPromptCancel">Cancel</button>
+<button class="btn btn-primary" id="boardPromptConfirm">Create</button>
+</div>
+</div>
+</div>
+
+<div class="overlay" id="shareOverlay">
+<div class="dialog-box" style="max-width:480px">
+<h2 id="shareTitle">Share board</h2>
+<p class="sub" id="shareSub">Share this board with your team.</p>
+<div style="display:flex;gap:8px;margin-bottom:12px">
+<input type="text" id="shareUrlInput" readonly style="flex:1;padding:9px 12px;border-radius:7px;border:1px solid var(--border);background:var(--bg-page);color:var(--text);font-size:13px;outline:none">
+<button class="btn btn-primary" id="shareCopyBtn"><i data-lucide="clipboard" class="icon-sm"></i> Copy</button>
+</div>
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;color:var(--text-secondary);font-size:12px"><span style="flex:1;height:1px;background:var(--border)"></span> or copy raw JSON <span style="flex:1;height:1px;background:var(--border)"></span></div>
+<textarea id="shareJsonTextarea" readonly style="width:100%;height:100px;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-page);color:var(--text);font-size:11px;font-family:monospace;resize:none;outline:none;box-sizing:border-box"></textarea>
+<div class="btns" style="margin-top:8px">
+<button class="btn" id="shareJsonCopyBtn"><i data-lucide="clipboard" class="icon-sm"></i> Copy JSON</button>
+<button class="btn" id="shareCloseBtn">Close</button>
+</div>
+</div>
+</div>
+
+<div class="overlay" id="importOverlay">
+<div class="dialog-box" style="max-width:380px">
+<h2>Import shared board</h2>
+<p class="sub" id="importSub">A board was shared with you.</p>
+<div class="btns">
+<button class="btn btn-primary" id="importConfirmBtn"><i data-lucide="download" class="icon-sm"></i> Import</button>
+<button class="btn" id="importCancelBtn">Cancel</button>
+</div>
+</div>
+</div>
+
+<div class="overlay" id="pasteImportOverlay">
+<div class="dialog-box" style="max-width:440px">
+<h2>Import board from JSON</h2>
+<p class="sub">Paste the shared board JSON below.</p>
+<textarea id="pasteImportTextarea" style="width:100%;height:180px;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-page);color:var(--text);font-size:11px;font-family:monospace;resize:vertical;outline:none;box-sizing:border-box" placeholder='{"name":"Board 1","cards":[...],"columnConfig":{...}}'></textarea>
+<div id="pasteImportError" style="font-size:13px;color:#f87171;background:rgba(248,113,113,0.1);padding:8px 12px;border-radius:6px;margin-bottom:8px;display:none"></div>
+<div class="btns">
+<button class="btn btn-primary" id="pasteImportConfirm"><i data-lucide="download" class="icon-sm"></i> Import</button>
+<button class="btn" id="pasteImportCancel">Cancel</button>
+</div>
+</div>
+</div>
+
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<div class="layout">
+<aside class="sidebar" id="sidebar">
+<div class="sidebar-header">
+<button class="sidebar-collapse-btn" id="sidebarCollapseBtn"><i data-lucide="chevron-left" class="icon-xs"></i></button>
+<div class="sidebar-logo"><i data-lucide="layers" class="icon-sm"></i> <span>Priority Sorter</span></div>
+</div>
+<button class="sidebar-btn" id="newBoardBtn"><i data-lucide="plus" class="icon-sm"></i> <span>New Board</span></button>
+<div class="board-list" id="boardList"></div>
+<div class="sidebar-spacer"></div>
+<div class="sidebar-divider"></div>
+<button class="sidebar-btn" id="sidebarThemeBtn"><span id="sidebarThemeIcon"><i data-lucide="sun" class="icon-sm"></i></span> <span id="sidebarThemeLabel">Dark mode</span></button>
+</aside>
+<div class="main-area">
+<header class="topbar">
+<div class="topbar-left"><button class="hamburger" id="hamburgerBtn"><i data-lucide="menu" class="icon-sm"></i></button></div>
+<div class="controls">
+<div class="dropdown-wrap">
+<button class="btn btn-ghost" id="importBulkBtn"><i data-lucide="chevron-down" class="icon-sm"></i> Import</button>
+<div class="dropdown-menu" id="importBulkDropdown">
+<button id="importBoardOption"><i data-lucide="upload" class="icon-xs"></i> Import board</button>
+<button id="bulkImportOption"><i data-lucide="file-plus" class="icon-xs"></i> Bulk import cards</button>
+</div>
+</div>
+<button class="btn btn-ghost" id="shareBtn"><i data-lucide="share-2" class="icon-sm"></i> Share</button>
+<button class="btn btn-export" id="exportBtn"><i data-lucide="download" class="icon-sm"></i> Export JSON</button>
+</div>
+</header>
+<div class="app">
+<div class="columns" id="columns">
+<div class="col col-unsorted" data-col="uncategorized"><div class="col-header" id="header-uncategorized"></div><div class="col-body" id="col-uncategorized"></div></div>
+<div class="col col-crit" data-col="critical"><div class="col-header" id="header-critical"></div><div class="col-body" id="col-critical"></div></div>
+<div class="col col-imp" data-col="important"><div class="col-header" id="header-important"></div><div class="col-body" id="col-important"></div></div>
+<div class="col col-nice" data-col="nice"><div class="col-header" id="header-nice"></div><div class="col-body" id="col-nice"></div></div>
+<div class="col col-sort" data-col="sorting"><div class="col-header" id="header-sorting"></div><div class="col-body" id="col-sorting"></div></div>
+<div class="col col-later" data-col="later"><div class="col-header" id="header-later"></div><div class="col-body" id="col-later"></div></div>
+</div>
+</div>
+</div>
+</div>
+
+<script src="lucide.min.js"></script>
+<script>
+var IMPACT = {
+  critical: { score5: 5, score10: 10 },
+  important: { score5: 4, score10: 8 },
+  sorting: { score5: 3, score10: 6 },
+  nice: { score5: 2, score10: 4 },
+  later: { score5: 1, score10: 2 },
+  uncategorized: { score5: 0, score10: 0 }
+}
+
+var COLUMN_KEYS = ['uncategorized', 'critical', 'important', 'nice', 'sorting', 'later']
+var DEFAULT_CONFIG = {
+  uncategorized: { label:'Cards to sort', icon:'inbox', color:'#8A8F98' },
+  later:         { label:'Barely matters',   icon:'clock',         color:'#6B7280' },
+  sorting:       { label:'Minor improvement',icon:'arrow-up-down',color:'#2dd4bf' },
+  nice:          { label:'Solid',            icon:'star',         color:'#4ade80' },
+  important:     { label:'Big win',          icon:'flag',         color:'#fb923c' },
+  critical:      { label:'Must have',        icon:'alert-circle', color:'#f87171' }
+}
+var cards = []
+var columnConfig = {}
+var boards = {}
+var currentBoardId = null
+var idCounter = 0
+
+function uid() { return 'c' + Date.now() + '-' + (idCounter++) }
+
+function genBoardId() { return 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2,6) }
+
+function loadDefaultConfig() {
+  var cfg = {}
+  for (var i = 0; i < COLUMN_KEYS.length; i++) {
+    var k = COLUMN_KEYS[i]
+    cfg[k] = { label: DEFAULT_CONFIG[k].label, icon: DEFAULT_CONFIG[k].icon, color: DEFAULT_CONFIG[k].color }
+  }
+  return cfg
+}
+
+function saveConfig() {
+  saveCurrentBoard()
+}
+
+function loadBoards() {
+  try {
+    var saved = JSON.parse(localStorage.getItem('ps-boards'))
+    if (saved && typeof saved === 'object') boards = saved
+  } catch(e) {}
+
+  if (Object.keys(boards).length === 0) {
+    var oldConfig = null
+    try { oldConfig = JSON.parse(localStorage.getItem('ps-columns')) } catch(e) {}
+    var id = genBoardId()
+    boards[id] = { id: id, name: 'Board 1', cards: [], columnConfig: oldConfig, createdAt: new Date().toISOString() }
+    localStorage.removeItem('ps-columns')
+    saveBoards()
+  }
+
+  try { currentBoardId = localStorage.getItem('ps-current-board') } catch(e) {}
+  if (!currentBoardId || !boards[currentBoardId]) {
+    currentBoardId = Object.keys(boards)[0]
+    try { localStorage.setItem('ps-current-board', currentBoardId) } catch(e) {}
+  }
+
+  var board = boards[currentBoardId]
+  cards = board.cards || []
+  columnConfig = board.columnConfig || loadDefaultConfig()
+
+  var shared = readShareHash()
+  if (shared) showImportPrompt(shared)
+}
+
+function saveBoards() {
+  try { localStorage.setItem('ps-boards', JSON.stringify(boards)) } catch(e) {}
+}
+
+function saveCurrentBoard() {
+  if (currentBoardId && boards[currentBoardId]) {
+    boards[currentBoardId].cards = cards
+    boards[currentBoardId].columnConfig = columnConfig
+    saveBoards()
+  }
+}
+
+function switchBoard(id) {
+  if (id === currentBoardId || !boards[id]) return
+  saveCurrentBoard()
+  currentBoardId = id
+  try { localStorage.setItem('ps-current-board', id) } catch(e) {}
+  var board = boards[id]
+  cards = board.cards || []
+  columnConfig = board.columnConfig || loadDefaultConfig()
+  for (var i = 0; i < cards.length; i++) { cards[i]._expanded = false; cards[i]._addingNote = false }
+  render()
+  renderSidebar()
+}
+
+function createBoard(name) {
+  name = name.trim() || 'Untitled'
+  var id = genBoardId()
+  boards[id] = { id: id, name: name, cards: [], columnConfig: null, createdAt: new Date().toISOString() }
+  saveBoards()
+  switchBoard(id)
+}
+
+function deleteBoard(id) {
+  if (!boards[id]) return
+  var isCurrent = id === currentBoardId
+  delete boards[id]
+  saveBoards()
+  if (isCurrent) {
+    var keys = Object.keys(boards)
+    if (keys.length > 0) switchBoard(keys[0])
+    else createBoard('Board 1')
+  } else {
+    renderSidebar()
+  }
+}
+
+function renameBoard(id, name) {
+  if (boards[id] && name.trim()) {
+    boards[id].name = name.trim()
+    saveBoards()
+    renderSidebar()
+  }
+}
+
+function renderSidebar() {
+  var list = document.getElementById('boardList')
+  if (!list) return
+  var html = ''
+  var keys = Object.keys(boards)
+  for (var i = 0; i < keys.length; i++) {
+    var id = keys[i]
+    var b = boards[id]
+    var active = id === currentBoardId ? ' active' : ''
+    var iconColor = b.iconColor || '#5E6AD2'
+    html += '<div class="board-item' + active + '" data-board-id="' + id + '">'
+      + '<i data-lucide="layout-dashboard" class="board-item-icon" style="color:' + (active ? iconColor : '') + '"></i>'
+      + '<span class="board-item-name">' + esc(b.name) + '</span>'
+      + '<div class="board-item-menu-wrapper">'
+      + '<button class="board-item-menu" data-board-id="' + id + '" title="Board actions"><i data-lucide="more-vertical" class="icon-xs"></i></button>'
+      + '<div class="board-menu-dropdown" data-board-id="' + id + '">'
+      + '<button class="menu-rename" data-board-id="' + id + '"><i data-lucide="pencil" class="icon-xs"></i> Rename</button>'
+      + '<button class="menu-share" data-board-id="' + id + '"><i data-lucide="share-2" class="icon-xs"></i> Share</button>'
+      + '<button class="menu-del" data-board-id="' + id + '"><i data-lucide="trash-2" class="icon-xs"></i> Delete</button>'
+      + '<div class="board-menu-color">'
+      + '<input type="color" class="menu-color-picker" data-board-id="' + id + '" value="' + iconColor + '">'
+      + '<span style="font-size:12px;color:var(--text-secondary)">Icon color</span>'
+      + '</div>'
+      + '</div>'
+      + '</div>'
+      + '</div>'
+  }
+  list.innerHTML = html
+  lucide.createIcons()
+}
+
+loadBoards()
+
+function esc(s) {
+  var d = document.createElement('div')
+  d.appendChild(document.createTextNode(s))
+  return d.innerHTML
+}
+
+function addCard(text, column) {
+  text = text.trim()
+  if (!text) return false
+  cards.push({ id: uid(), text: text, column: column || 'uncategorized', notes: [] })
+  render()
+  return true
+}
+
+function deleteCard(id) {
+  var next = []
+  for (var i = 0; i < cards.length; i++) {
+    if (cards[i].id !== id) next.push(cards[i])
+  }
+  cards = next
+  render()
+}
+
+function moveCard(id, column) {
+  var c = null
+  for (var i = 0; i < cards.length; i++) {
+    if (cards[i].id === id) { c = cards[i]; break }
+  }
+  if (c) {
+    if (c.column !== column) c.column = column
+    render()
+  }
+}
+
+function render() {
+  for (var i = 0; i < COLUMN_KEYS.length; i++) {
+    var key = COLUMN_KEYS[i]
+    var cfg = columnConfig[key]
+    var headerEl = document.getElementById('header-' + key)
+    var container = document.getElementById('col-' + key)
+    var items = []
+    for (var j = 0; j < cards.length; j++) {
+      if (cards[j].column === key) items.push(cards[j])
+    }
+    headerEl.innerHTML = '<i data-lucide="' + esc(cfg.icon) + '" class="col-icon" style="color:' + esc(cfg.color) + '"></i> '
+      + '<span style="font-weight:500;color:' + esc(cfg.color) + '">' + esc(cfg.label) + '</span> '
+      + '<span class="count">' + items.length + '</span>'
+      + '<button class="col-header-add" data-col="' + key + '" title="Add card"><i data-lucide="plus" class="icon-xs"></i></button>'
+
+    var colHtml = ''
+    if (items.length === 0) {
+      colHtml = '<div class="empty-state">Drop cards here</div>'
+    } else {
+      for (var j = 0; j < items.length; j++) {
+        var c = items[j]
+        var hasNotes = c.notes && c.notes.length > 0
+        var noteClass = hasNotes ? ' has-note' : ''
+        var expanded = c._expanded ? '1' : '0'
+        var hasNoteText = hasNotes ? ' (' + c.notes.length + ')' : ''
+        var chevIcon = c._expanded ? 'chevron-down' : 'chevron-right'
+        var toggleHtml = c._expanded || hasNotes
+          ? '<i data-lucide="' + chevIcon + '" class="icon-xs"></i> Notes' + hasNoteText
+          : '<i data-lucide="plus" class="icon-xs"></i> Add note'
+        var noteHtml = ''
+        if (c._expanded) {
+          if (hasNotes) {
+            for (var k = 0; k < c.notes.length; k++) {
+              noteHtml += '<div class="note-item">'
+                + '<span class="note-item-text">' + esc(c.notes[k]) + '</span>'
+                + '<div class="note-actions-wrapper">'
+                + '<button class="note-menu-btn" data-id="' + c.id + '" data-index="' + k + '" title="More"><i data-lucide="more-vertical" class="icon-xs"></i></button>'
+                + '<div class="note-menu-dropdown">'
+                + '<button class="note-edit" data-id="' + c.id + '" data-index="' + k + '"><i data-lucide="pencil" class="icon-xs"></i> Edit</button>'
+                + '<button class="note-del" data-id="' + c.id + '" data-index="' + k + '"><i data-lucide="trash-2" class="icon-xs"></i> Remove</button>'
+                + '</div>'
+                + '</div>'
+                + '</div>'
+            }
+            if (c._addingNote) {
+              noteHtml += '<div class="inline-note-area">'
+                + '<textarea id="note-inline-' + c.id + '" placeholder="Write a note..." rows="1"></textarea>'
+                + '<button class="inline-note-check" data-id="' + c.id + '" title="Save note"><i data-lucide="check" class="icon-xs"></i></button>'
+                + '</div>'
+            } else {
+              noteHtml += '<button class="add-note-btn" data-id="' + c.id + '"><i data-lucide="plus" class="icon-xs"></i> Add note</button>'
+            }
+          } else {
+            noteHtml = '<div class="inline-note-area">'
+              + '<textarea id="note-inline-' + c.id + '" placeholder="Write a note..." rows="1"></textarea>'
+              + '<button class="inline-note-check" data-id="' + c.id + '" title="Save note"><i data-lucide="check" class="icon-xs"></i></button>'
+              + '</div>'
+          }
+        }
+        var cardIconCfg = columnConfig[c.column]
+        colHtml += '<div class="card' + noteClass + '" draggable="true" data-id="' + c.id + '" data-expanded="' + expanded + '">'
+          + '<div class="card-main">'
+          + '<i data-lucide="' + esc(cardIconCfg.icon) + '" class="card-icon" style="color:' + esc(cardIconCfg.color) + '"></i>'
+          + '<span class="card-text">' + esc(c.text) + '</span>'
+          + '<div class="card-actions">'
+          + '<button class="del" data-id="' + c.id + '" title="Remove"><i data-lucide="trash-2" class="icon-xs"></i></button>'
+          + '</div>'
+          + '</div>'
+          + '<div class="card-note-bar">'
+          + '<span class="note-toggle' + (hasNotes ? ' has-note' : '') + '" data-id="' + c.id + '" role="button" tabindex="0">' + toggleHtml + '</span>'
+          + '</div>'
+          + '<div class="card-note">' + noteHtml + '</div>'
+          + '</div>'
+      }
+    }
+    colHtml += '<button class="col-add-btn" data-col="' + key + '"><i data-lucide="plus" class="icon-xs"></i> Add card</button>'
+    container.innerHTML = colHtml
+  }
+  saveCurrentBoard()
+  lucide.createIcons()
+}
+
+// Theme toggle
+var htmlEl = document.documentElement
+var sidebarThemeBtn = document.getElementById('sidebarThemeBtn')
+
+function setTheme(dark) {
+  if (dark) {
+    htmlEl.classList.remove('light')
+    htmlEl.classList.add('dark')
+    document.getElementById('sidebarThemeIcon').innerHTML = '<i data-lucide="sun" class="icon-sm"></i>'
+    document.getElementById('sidebarThemeLabel').textContent = 'Dark mode'
+  } else {
+    htmlEl.classList.remove('dark')
+    htmlEl.classList.add('light')
+    document.getElementById('sidebarThemeIcon').innerHTML = '<i data-lucide="moon" class="icon-sm"></i>'
+    document.getElementById('sidebarThemeLabel').textContent = 'Light mode'
+  }
+  lucide.createIcons()
+  try { localStorage.setItem('priority-sorter-theme', dark ? 'dark' : 'light') } catch(e) {}
+}
+
+sidebarThemeBtn.addEventListener('click', function() {
+  setTheme(!htmlEl.classList.contains('dark'))
+})
+
+try {
+  var saved = localStorage.getItem('priority-sorter-theme')
+  if (saved === 'light') setTheme(false)
+  else setTheme(true)
+} catch(e) { setTheme(true) }
+
+// Sidebar events
+var boardPromptMode = 'create'
+var boardPromptRenameId = null
+
+function openBoardPrompt(mode, id, currentName) {
+  boardPromptMode = mode
+  boardPromptRenameId = mode === 'rename' ? id : null
+  var titleEl = document.getElementById('boardPromptTitle')
+  var subEl = document.getElementById('boardPromptSub')
+  var inputEl = document.getElementById('boardPromptInput')
+  var confirmEl = document.getElementById('boardPromptConfirm')
+  if (mode === 'rename') {
+    titleEl.textContent = 'Rename board'
+    subEl.textContent = 'Enter a new name for the board.'
+    confirmEl.textContent = 'Save'
+    inputEl.value = currentName
+  } else {
+    titleEl.textContent = 'New Board'
+    subEl.textContent = 'Enter a name for the board.'
+    confirmEl.textContent = 'Create'
+    inputEl.value = ''
+  }
+  document.getElementById('boardPromptOverlay').classList.add('open')
+  setTimeout(function() { inputEl.focus(); inputEl.select() }, 100)
+}
+
+document.querySelector('.sidebar').addEventListener('click', function(e) {
+  // Close any open board menus first
+  var menuDropdown = e.target.closest('.board-menu-dropdown')
+  var menuBtn = e.target.closest('.board-item-menu')
+
+  if (menuBtn) {
+    e.stopPropagation()
+    closeAllBoardMenus()
+    var dropdown = menuBtn.parentNode.querySelector('.board-menu-dropdown')
+    if (dropdown) dropdown.classList.toggle('open')
+    return
+  }
+
+  if (!menuDropdown) closeAllBoardMenus()
+
+  var item = e.target.closest('.board-item')
+  if (item && !menuDropdown) {
+    var id = item.dataset.boardId
+    if (id && id !== currentBoardId) switchBoard(id)
+    return
+  }
+
+  var renameBtn = e.target.closest('.menu-rename')
+  if (renameBtn) {
+    var id = renameBtn.dataset.boardId
+    closeAllBoardMenus()
+    openBoardPrompt('rename', id, boards[id].name)
+    return
+  }
+
+  var shareBtn = e.target.closest('.menu-share')
+  if (shareBtn) {
+    var id = shareBtn.dataset.boardId
+    closeAllBoardMenus()
+    showShareDialog(id)
+    return
+  }
+
+  var delBtn = e.target.closest('.menu-del')
+  if (delBtn) {
+    var id = delBtn.dataset.boardId
+    closeAllBoardMenus()
+    var name = boards[id] ? boards[id].name : ''
+    if (id && confirm('Delete board "' + name + '"?')) deleteBoard(id)
+    return
+  }
+
+  var colorPicker = e.target.closest('.menu-color-picker')
+  if (colorPicker) {
+    // handled by change event
+    return
+  }
+
+  var newBtn = e.target.closest('#newBoardBtn')
+  if (newBtn) {
+    openBoardPrompt('create')
+    return
+  }
+})
+
+document.querySelector('.sidebar').addEventListener('dblclick', function(e) {
+  if (e.target.closest('button, .board-menu-dropdown, .board-item-menu, input')) return
+  var item = e.target.closest('.board-item')
+  if (!item) return
+  closeAllBoardMenus()
+  openBoardPrompt('rename', item.dataset.boardId, boards[item.dataset.boardId].name)
+})
+
+function closeAllBoardMenus() {
+  var menus = document.querySelectorAll('.board-menu-dropdown.open')
+  for (var i = 0; i < menus.length; i++) menus[i].classList.remove('open')
+}
+
+// Board icon color picker
+document.addEventListener('change', function(e) {
+  var picker = e.target.closest('.menu-color-picker')
+  if (!picker) return
+  var id = picker.dataset.boardId
+  if (boards[id]) {
+    boards[id].iconColor = picker.value
+    saveBoards()
+    renderSidebar()
+  }
+})
+
+// Board prompt dialog
+var boardPromptOverlay = document.getElementById('boardPromptOverlay')
+var boardPromptInput = document.getElementById('boardPromptInput')
+
+document.getElementById('boardPromptCancel').addEventListener('click', function() {
+  boardPromptOverlay.classList.remove('open')
+})
+
+document.getElementById('boardPromptConfirm').addEventListener('click', function() {
+  var val = boardPromptInput.value.trim()
+  if (!val) return
+  if (boardPromptMode === 'rename') {
+    renameBoard(boardPromptRenameId, val)
+  } else {
+    createBoard(val)
+  }
+  boardPromptOverlay.classList.remove('open')
+})
+
+boardPromptInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    document.getElementById('boardPromptConfirm').click()
+  }
+})
+
+boardPromptOverlay.addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open')
+})
+
+// Light theme vars
+var lightStyle = document.createElement('style')
+lightStyle.textContent = 'html.light{--bg-nav:#E4E5E7;--bg-page:#F7F8F8;--bg-card:#fff;--bg-surface:#fff;--bg-surface-hover:#F4F5F6;--border:#E5E6E8;--border-hover:#D0D2D6;--text:#08090A;--text-secondary:#8A8F98;--accent:#5E6AD2;--accent-hover:#4B57C8;--accent-muted:rgba(94,106,210,0.08)}'
+document.head.appendChild(lightStyle)
+
+// Add single card dialog
+var addOverlay = document.getElementById('addOverlay')
+var addInput = document.getElementById('addInput')
+var addTargetCol = 'uncategorized'
+
+document.getElementById('addCancel').addEventListener('click', function() {
+  addOverlay.classList.remove('open')
+})
+
+document.getElementById('addConfirm').addEventListener('click', function() {
+  addCard(addInput.value, addTargetCol)
+  addInput.value = ''
+  addOverlay.classList.remove('open')
+})
+
+addInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    addCard(addInput.value, addTargetCol)
+    addInput.value = ''
+    addOverlay.classList.remove('open')
+  }
+})
+
+addOverlay.addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open')
+})
+
+// Bulk import dialog
+var bulkOverlay = document.getElementById('bulkOverlay')
+var bulkError = document.getElementById('bulkError')
+
+function showBulkError(msg) {
+  bulkError.textContent = msg
+  bulkError.style.display = msg ? 'block' : 'none'
+}
+
+var tabs = document.querySelectorAll('.tab')
+for (var i = 0; i < tabs.length; i++) {
+  tabs[i].addEventListener('click', function() {
+    var allTabs = document.querySelectorAll('.tab')
+    for (var j = 0; j < allTabs.length; j++) allTabs[j].classList.remove('active')
+    this.classList.add('active')
+    var allContent = document.querySelectorAll('.tab-content')
+    for (var j = 0; j < allContent.length; j++) allContent[j].classList.remove('active')
+    document.getElementById('tab-' + this.dataset.tab).classList.add('active')
+    showBulkError('')
+  })
+}
+
+document.getElementById('importBulkBtn').addEventListener('click', function(e) {
+  e.stopPropagation()
+  document.getElementById('importBulkDropdown').classList.toggle('open')
+})
+
+document.getElementById('importBoardOption').addEventListener('click', function() {
+  document.getElementById('importBulkDropdown').classList.remove('open')
+  document.getElementById('pasteImportTextarea').value = ''
+  document.getElementById('pasteImportError').style.display = 'none'
+  document.getElementById('pasteImportOverlay').classList.add('open')
+})
+
+document.getElementById('bulkImportOption').addEventListener('click', function() {
+  document.getElementById('importBulkDropdown').classList.remove('open')
+  showBulkError('')
+  bulkOverlay.classList.add('open')
+})
+
+document.getElementById('bulkCancel').addEventListener('click', function() {
+  bulkOverlay.classList.remove('open')
+  showBulkError('')
+})
+
+document.getElementById('bulkConfirm').addEventListener('click', function() {
+  showBulkError('')
+  var activeTab = document.querySelector('.tab.active')
+  var mode = activeTab.dataset.tab
+  var count = 0
+
+  if (mode === 'text') {
+    var text = document.getElementById('bulkText').value
+    var lines = text.split('\n')
+    for (var i = 0; i < lines.length; i++) {
+      if (addCard(lines[i])) count++
+    }
+  } else {
+    var raw = document.getElementById('bulkJson').value.trim()
+    if (!raw) { showBulkError('Paste a JSON array before importing.'); return }
+    var arr
+    try { arr = JSON.parse(raw) } catch(e) { showBulkError('Invalid JSON: ' + e.message); return }
+    if (!Array.isArray(arr)) { showBulkError('JSON must be an array of strings.'); return }
+    for (var i = 0; i < arr.length; i++) {
+      if (typeof arr[i] === 'string') {
+        if (addCard(arr[i])) count++
+      } else {
+        showBulkError('Item ' + (i+1) + ' is not a string. Use a simple array like ["a", "b"].')
+        return
+      }
+    }
+  }
+
+  bulkOverlay.classList.remove('open')
+  showBulkError('')
+})
+
+bulkOverlay.addEventListener('click', function(e) {
+  if (e.target === this) { this.classList.remove('open'); showBulkError('') }
+})
+
+document.getElementById('downloadTemplate').addEventListener('click', function(e) {
+  e.preventDefault()
+  var template = [
+    "Improve onboarding flow",
+    "Add search functionality",
+    "Mobile responsive layout",
+    "Dark mode toggle",
+    "User profile page",
+    "Email notifications"
+  ]
+  var blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' })
+  var url = URL.createObjectURL(blob)
+  var a = document.createElement('a')
+  a.href = url
+  a.download = 'cards-template.json'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+})
+
+
+// Right-click column context menu
+var COLOR_SWATCHES = ['#f87171','#fb923c','#fbbf24','#4ade80','#34d399','#2dd4bf','#22d3ee','#60a5fa','#818cf8','#a78bfa','#e879f9','#f472b6','#6B7280','#8A8F98','#9CA3AF']
+var _ctxMenuEl = null
+
+function closeCtxMenu() {
+  if (_ctxMenuEl) {
+    _ctxMenuEl.parentNode.removeChild(_ctxMenuEl)
+    _ctxMenuEl = null
+  }
+}
+
+function showCtxMenu(key, x, y) {
+  closeCtxMenu()
+  var cfg = columnConfig[key]
+  var el = document.createElement('div')
+  el.className = 'ctx-menu'
+  el.style.left = x + 'px'
+  el.style.top = y + 'px'
+  el.innerHTML =
+    '<div class="ctx-section">'
+    + '<div class="ctx-section-label">Name</div>'
+    + '<div style="display:flex;gap:6px">'
+    + '<input type="text" class="ctx-input ctx-name-input" value="' + esc(cfg.label) + '" data-key="' + key + '">'
+    + '<button class="ctx-check" data-key="' + key + '" title="Save"><i data-lucide="check" class="icon-xs"></i></button>'
+    + '</div></div>'
+    + '<div class="ctx-section">'
+    + '<div class="ctx-section-label">Icon</div>'
+    + '<div class="ctx-preview-row">'
+    + '<span class="ctx-preview-icon"><i data-lucide="' + esc(cfg.icon) + '" class="icon-sm"></i></span>'
+    + '<span style="flex:1"></span>'
+    + '<button class="ctx-change-btn" data-key="' + key + '" data-action="icon">Change</button>'
+    + '</div></div>'
+    + '<div class="ctx-section">'
+    + '<div class="ctx-section-label">Color</div>'
+    + '<div class="ctx-preview-row">'
+    + '<span class="ctx-preview-swatch" style="background:' + esc(cfg.color) + '"></span>'
+    + '<span class="ctx-preview-hex">' + esc(cfg.color) + '</span>'
+    + '<button class="ctx-change-btn" data-key="' + key + '" data-action="color">Change</button>'
+    + '</div></div>'
+  document.body.appendChild(el)
+  _ctxMenuEl = el
+  lucide.createIcons()
+
+  setTimeout(function() { el.querySelector('.ctx-name-input').focus() }, 50)
+
+  setTimeout(function() {
+    function closeHandler(e) {
+      if (!el.contains(e.target)) { closeCtxMenu(); cleanup() }
+    }
+    function escHandler(e) {
+      if (e.key === 'Escape') { closeCtxMenu(); cleanup() }
+    }
+    function cleanup() {
+      document.removeEventListener('click', closeHandler)
+      document.removeEventListener('keydown', escHandler)
+    }
+    document.addEventListener('click', closeHandler)
+    document.addEventListener('keydown', escHandler)
+  }, 0)
+}
+
+// Context menu event
+document.getElementById('columns').addEventListener('contextmenu', function(e) {
+  var header = e.target.closest('.col-header')
+  if (!header) return
+  e.preventDefault()
+  var key = header.closest('.col').dataset.col
+  showCtxMenu(key, e.clientX, e.clientY)
+})
+
+// Ctx menu interactions (delegated on document)
+document.addEventListener('click', function(e) {
+  // Name checkmark
+  var check = e.target.closest('.ctx-check')
+  if (check) {
+    var key = check.dataset.key
+    var input = check.parentNode.querySelector('.ctx-input')
+    if (input && input.value.trim()) {
+      columnConfig[key].label = input.value.trim()
+      saveConfig()
+      render()
+      closeCtxMenu()
+    }
+    return
+  }
+
+  // Change button — open icon or color dialog
+  var changeBtn = e.target.closest('.ctx-change-btn')
+  if (changeBtn) {
+    var key = changeBtn.dataset.key
+    var action = changeBtn.dataset.action
+    closeCtxMenu()
+    if (action === 'icon') showIconDialog(key)
+    else if (action === 'color') showColorDialog(key)
+    return
+  }
+})
+
+// Enter in name input saves
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Enter') return
+  var input = e.target.closest('.ctx-name-input')
+  if (!input) return
+  var key = input.dataset.key
+  if (input.value.trim()) {
+    columnConfig[key].label = input.value.trim()
+    saveConfig()
+    render()
+    closeCtxMenu()
+  }
+})
+
+// Icon picker dialog
+function showIconDialog(key) {
+  var label = columnConfig[key].label
+  var overlay = document.createElement('div')
+  overlay.className = 'overlay open'
+  overlay.innerHTML = '<div class="dialog-box" style="max-width:400px">'
+    + '<h2>Choose icon</h2>'
+    + '<p class="sub">Pick an icon for <strong>' + esc(label) + '</strong></p>'
+    + '<input type="text" class="ctx-icon-search" placeholder="Search icons...">'
+    + '<div class="ctx-icon-grid"></div>'
+    + '</div>'
+  document.body.appendChild(overlay)
+
+  var grid = overlay.querySelector('.ctx-icon-grid')
+  var search = overlay.querySelector('.ctx-icon-search')
+
+  function renderGrid(query) {
+    var names = Object.keys(lucide).filter(function(k) { return Array.isArray(lucide[k]) }).sort()
+    if (query) names = names.filter(function(n) { return n.toLowerCase().indexOf(query.toLowerCase()) >= 0 })
+    names = names.slice(0, 60)
+    var current = columnConfig[key].icon
+    var html = ''
+    for (var i = 0; i < names.length; i++) {
+      var kebab = names[i].replace(/([a-z0-9])([A-Z])/g, '$1-$2').replace(/([A-Z])([A-Z][a-z])/g, '$1-$2').toLowerCase()
+      var active = kebab === current ? ' active' : ''
+      html += '<button class="ctx-icon-btn' + active + '" data-icon="' + kebab + '" title="' + kebab + '"><i data-lucide="' + kebab + '" class="icon-xs"></i></button>'
+    }
+    grid.innerHTML = html
+    lucide.createIcons()
+  }
+
+  renderGrid('')
+  search.focus()
+
+  search.addEventListener('input', function() { renderGrid(this.value) })
+  grid.addEventListener('click', function(e) {
+    var btn = e.target.closest('.ctx-icon-btn')
+    if (!btn) return
+    columnConfig[key].icon = btn.dataset.icon
+    saveConfig()
+    render()
+    closeDialog(overlay)
+  })
+
+  overlay.addEventListener('click', function(e) {
+    if (e.target === this) closeDialog(overlay)
+  })
+  overlay._escHandler = function(e) {
+    if (e.key === 'Escape') closeDialog(overlay)
+  }
+  document.addEventListener('keydown', overlay._escHandler)
+}
+
+// Color picker dialog
+function showColorDialog(key) {
+  var label = columnConfig[key].label
+  var overlay = document.createElement('div')
+  overlay.className = 'overlay open'
+  overlay.innerHTML = '<div class="dialog-box" style="max-width:350px">'
+    + '<h2>Pick color</h2>'
+    + '<p class="sub">Choose a color for <strong>' + esc(label) + '</strong></p>'
+    + '<div class="ctx-color-row">'
+    + '<input type="color" class="ctx-color-picker" value="' + columnConfig[key].color + '">'
+    + '<span class="ctx-color-val">' + columnConfig[key].color + '</span>'
+    + '</div>'
+    + '<div class="ctx-swatches"></div>'
+    + '</div>'
+  document.body.appendChild(overlay)
+
+  var swatchesEl = overlay.querySelector('.ctx-swatches')
+  var swatchHtml = ''
+  for (var i = 0; i < COLOR_SWATCHES.length; i++) {
+    var active = COLOR_SWATCHES[i] === columnConfig[key].color ? ' active' : ''
+    swatchHtml += '<div class="ctx-swatch' + active + '" style="background:' + COLOR_SWATCHES[i] + '" data-color="' + COLOR_SWATCHES[i] + '"></div>'
+  }
+  swatchesEl.innerHTML = swatchHtml
+
+  var picker = overlay.querySelector('.ctx-color-picker')
+  var valSpan = overlay.querySelector('.ctx-color-val')
+
+  picker.addEventListener('input', function() {
+    valSpan.textContent = this.value
+  })
+  picker.addEventListener('change', function() {
+    columnConfig[key].color = this.value
+    saveConfig()
+    render()
+    closeDialog(overlay)
+  })
+
+  swatchesEl.addEventListener('click', function(e) {
+    var swatch = e.target.closest('.ctx-swatch')
+    if (!swatch) return
+    columnConfig[key].color = swatch.dataset.color
+    saveConfig()
+    render()
+    closeDialog(overlay)
+  })
+
+  overlay.addEventListener('click', function(e) {
+    if (e.target === this) closeDialog(overlay)
+  })
+  overlay._escHandler = function(e) {
+    if (e.key === 'Escape') closeDialog(overlay)
+  }
+  document.addEventListener('keydown', overlay._escHandler)
+}
+
+function closeDialog(overlay) {
+  if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay)
+  if (overlay && overlay._escHandler) document.removeEventListener('keydown', overlay._escHandler)
+}
+
+// Note dialog
+var noteOverlay = document.getElementById('noteOverlay')
+var noteTextarea = document.getElementById('noteTextarea')
+var noteCardLabel = document.getElementById('noteCardLabel')
+var noteTargetId = null
+var noteTargetIndex = -1
+
+document.getElementById('noteCancel').addEventListener('click', function() {
+  noteOverlay.classList.remove('open')
+})
+
+document.getElementById('noteSave').addEventListener('click', function() {
+  var val = noteTextarea.value.trim()
+  if (val && noteTargetId) {
+    for (var i = 0; i < cards.length; i++) {
+      if (cards[i].id === noteTargetId) {
+        if (noteTargetIndex >= 0) {
+          cards[i].notes[noteTargetIndex] = val
+        } else {
+          cards[i].notes.push(val)
+        }
+        break
+      }
+    }
+  }
+  noteTargetId = null
+  noteTargetIndex = -1
+  render()
+  noteOverlay.classList.remove('open')
+})
+
+noteOverlay.addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open')
+})
+
+function openNoteDialog(cardId, index) {
+  for (var i = 0; i < cards.length; i++) {
+    if (cards[i].id === cardId) {
+      noteTargetId = cardId
+      noteTargetIndex = index != null ? index : -1
+      noteTextarea.value = (index >= 0 && cards[i].notes[index]) ? cards[i].notes[index] : ''
+      noteCardLabel.textContent = 'for: ' + cards[i].text
+      noteOverlay.classList.add('open')
+      setTimeout(function() { noteTextarea.focus() }, 100)
+      return
+    }
+  }
+}
+
+// Export
+document.getElementById('exportBtn').addEventListener('click', function() {
+  var mapped = []
+  for (var i = 0; i < cards.length; i++) {
+    var c = cards[i]
+    mapped.push({
+      id: c.id,
+      text: c.text,
+      column: c.column,
+      notes: c.notes || [],
+      impact_5: IMPACT[c.column].score5,
+      impact_10: IMPACT[c.column].score10
+    })
+  }
+  var data = {
+    exportedAt: new Date().toISOString(),
+    impactMapping: (function() {
+      var m = {}
+      for (var i = 0; i < COLUMN_KEYS.length; i++) {
+        var k = COLUMN_KEYS[i]
+        m[k] = { label: columnConfig[k].label, impact_5: IMPACT[k].score5, impact_10: IMPACT[k].score10 }
+      }
+      return m
+    })(),
+    cards: mapped
+  }
+  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  var url = URL.createObjectURL(blob)
+  var a = document.createElement('a')
+  a.href = url
+  a.download = 'priority-sort-' + new Date().toISOString().slice(0,10) + '.json'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+})
+
+// Share
+document.getElementById('shareBtn').addEventListener('click', function() {
+  showShareDialog(currentBoardId)
+})
+
+function getShareData(boardId) {
+  var b = boards[boardId]
+  if (!b) return null
+  return { name: b.name, cards: b.cards, columnConfig: b.columnConfig }
+}
+
+function buildShareUrl(boardId) {
+  var data = getShareData(boardId)
+  if (!data) return ''
+  var json = JSON.stringify(data)
+  var encoded = btoa(unescape(encodeURIComponent(json)))
+  return location.href.split('#')[0] + '#board=' + encodeURIComponent(encoded)
+}
+
+function readShareHash() {
+  var hash = location.hash
+  if (!hash || hash.indexOf('#board=') !== 0) return null
+  try {
+    var raw = hash.replace('#board=', '')
+    var decoded = decodeURIComponent(raw)
+    var json = decodeURIComponent(escape(atob(decoded)))
+    return JSON.parse(json)
+  } catch(e) { return null }
+}
+
+function showShareDialog(boardId) {
+  var b = boards[boardId]
+  if (!b) return
+  var url = buildShareUrl(boardId)
+  var json = JSON.stringify(getShareData(boardId), null, 2)
+  document.getElementById('shareTitle').textContent = 'Share "' + b.name + '"'
+  document.getElementById('shareUrlInput').value = url
+  document.getElementById('shareJsonTextarea').value = json
+  document.getElementById('shareOverlay').classList.add('open')
+  lucide.createIcons()
+}
+
+document.getElementById('shareCopyBtn').addEventListener('click', function() {
+  var input = document.getElementById('shareUrlInput')
+  input.select()
+  navigator.clipboard.writeText(input.value)
+  var btn = this
+  var orig = btn.innerHTML
+  btn.innerHTML = '<i data-lucide="check" class="icon-sm"></i> Copied!'
+  lucide.createIcons()
+  setTimeout(function() { btn.innerHTML = orig; lucide.createIcons() }, 2000)
+})
+
+document.getElementById('shareJsonCopyBtn').addEventListener('click', function() {
+  var ta = document.getElementById('shareJsonTextarea')
+  ta.select()
+  navigator.clipboard.writeText(ta.value)
+  var btn = this
+  var orig = btn.innerHTML
+  btn.innerHTML = '<i data-lucide="check" class="icon-sm"></i> Copied!'
+  lucide.createIcons()
+  setTimeout(function() { btn.innerHTML = orig; lucide.createIcons() }, 2000)
+})
+
+document.getElementById('shareCloseBtn').addEventListener('click', function() {
+  document.getElementById('shareOverlay').classList.remove('open')
+})
+document.getElementById('shareOverlay').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open')
+})
+
+// Import shared board
+var _importData = null
+
+function showImportPrompt(data) {
+  _importData = data
+  document.getElementById('importSub').textContent = '"' + data.name + '" was shared with you. Add it to your boards?'
+  document.getElementById('importOverlay').classList.add('open')
+}
+
+document.getElementById('importConfirmBtn').addEventListener('click', function() {
+  if (!_importData) return
+  var name = _importData.name
+  var count = 1
+  var baseName = name
+  while (Object.keys(boards).some(function(k) { return boards[k].name === name })) {
+    name = baseName + ' (' + (count++) + ')'
+  }
+  var id = genBoardId()
+  boards[id] = { id: id, name: name, cards: _importData.cards || [], columnConfig: _importData.columnConfig || null, createdAt: new Date().toISOString() }
+  saveBoards()
+  switchBoard(id)
+  _importData = null
+  document.getElementById('importOverlay').classList.remove('open')
+  location.hash = ''
+})
+
+document.getElementById('importCancelBtn').addEventListener('click', function() {
+  _importData = null
+  document.getElementById('importOverlay').classList.remove('open')
+  location.hash = ''
+})
+document.getElementById('importOverlay').addEventListener('click', function(e) {
+  if (e.target === this) { _importData = null; this.classList.remove('open'); location.hash = '' }
+})
+
+// Paste import
+document.getElementById('pasteImportConfirm').addEventListener('click', function() {
+  var raw = document.getElementById('pasteImportTextarea').value.trim()
+  var errEl = document.getElementById('pasteImportError')
+  if (!raw) { errEl.textContent = 'Paste the board JSON first.'; errEl.style.display = 'block'; return }
+  var data
+  try { data = JSON.parse(raw) } catch(e) { errEl.textContent = 'Invalid JSON: ' + e.message; errEl.style.display = 'block'; return }
+  if (!data || !data.name || !Array.isArray(data.cards)) { errEl.textContent = 'JSON must have a "name" (string) and "cards" (array).'; errEl.style.display = 'block'; return }
+  var name = data.name
+  var count = 1
+  var baseName = name
+  while (Object.keys(boards).some(function(k) { return boards[k].name === name })) {
+    name = baseName + ' (' + (count++) + ')'
+  }
+  var id = genBoardId()
+  boards[id] = { id: id, name: name, cards: data.cards || [], columnConfig: data.columnConfig || null, createdAt: new Date().toISOString() }
+  saveBoards()
+  switchBoard(id)
+  document.getElementById('pasteImportOverlay').classList.remove('open')
+})
+
+document.getElementById('pasteImportCancel').addEventListener('click', function() {
+  document.getElementById('pasteImportOverlay').classList.remove('open')
+})
+document.getElementById('pasteImportOverlay').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open')
+})
+
+// Drag and drop (delegated)
+document.getElementById('columns').addEventListener('dragstart', function(e) {
+  var card = e.target.closest('.card')
+  if (!card) return
+  var rect = card.getBoundingClientRect()
+  var ghost = card.cloneNode(true)
+  ghost.style.position = 'fixed'
+  ghost.style.top = '-9999px'
+  ghost.style.pointerEvents = 'none'
+  ghost.style.width = rect.width + 'px'
+  document.body.appendChild(ghost)
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/plain', card.dataset.id)
+  e.dataTransfer.setDragImage(ghost, e.clientX - rect.left, e.clientY - rect.top)
+  setTimeout(function() { document.body.removeChild(ghost) }, 0)
+})
+
+document.getElementById('columns').addEventListener('dragend', function(e) {
+  var cols = document.querySelectorAll('.col')
+  for (var i = 0; i < cols.length; i++) cols[i].classList.remove('drag-over')
+})
+
+document.getElementById('columns').addEventListener('click', function(e) {
+  var del = e.target.closest('.del')
+  if (del) { deleteCard(del.dataset.id); return }
+
+  var toggle = e.target.closest('.note-toggle')
+  if (toggle) { toggleNote(toggle.dataset.id); return }
+
+  var noteMenuBtn = e.target.closest('.note-menu-btn')
+  if (noteMenuBtn) {
+    e.stopPropagation()
+    var wrapper = noteMenuBtn.closest('.note-actions-wrapper')
+    var wasOpen = wrapper.querySelector('.note-menu-dropdown.open')
+    closeAllNoteMenus()
+    if (!wasOpen) wrapper.querySelector('.note-menu-dropdown').classList.add('open')
+    return
+  }
+
+  var noteEdit = e.target.closest('.note-edit')
+  if (noteEdit) { openNoteDialog(noteEdit.dataset.id, parseInt(noteEdit.dataset.index)); return }
+
+  var noteDel = e.target.closest('.note-del')
+  if (noteDel) {
+    var cardId = noteDel.dataset.id
+    var idx = parseInt(noteDel.dataset.index)
+    for (var i = 0; i < cards.length; i++) {
+      if (cards[i].id === cardId) {
+        cards[i].notes.splice(idx, 1)
+        break
+      }
+    }
+    render()
+    return
+  }
+
+  var inlineCheck = e.target.closest('.inline-note-check')
+  if (inlineCheck) {
+    var ta = inlineCheck.parentNode.querySelector('textarea')
+    if (ta && ta.value.trim()) {
+      for (var i = 0; i < cards.length; i++) {
+        if (cards[i].id === inlineCheck.dataset.id) {
+          if (cards[i]._addingNote) cards[i]._addingNote = false
+          cards[i].notes.push(ta.value.trim())
+          break
+        }
+      }
+      render()
+    }
+    return
+  }
+
+  var addNoteBtn = e.target.closest('.add-note-btn')
+  if (addNoteBtn) {
+    for (var i = 0; i < cards.length; i++) {
+      if (cards[i].id === addNoteBtn.dataset.id) {
+        cards[i]._addingNote = true
+        break
+      }
+    }
+    render()
+    return
+  }
+
+  var colAddBtn = e.target.closest('.col-add-btn, .col-header-add')
+  if (colAddBtn) {
+    addTargetCol = colAddBtn.dataset.col
+    addInput.value = ''
+    addOverlay.classList.add('open')
+    setTimeout(function() { addInput.focus() }, 100)
+    return
+  }
+})
+
+document.getElementById('columns').addEventListener('keydown', function(e) {
+  var toggle = e.target.closest('.note-toggle')
+  if (toggle && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleNote(toggle.dataset.id); return }
+  if (e.key === 'Enter') {
+    var ta = e.target.closest('.inline-note-area textarea')
+    if (ta) {
+      e.preventDefault()
+      var cardEl = ta.closest('.card')
+      if (cardEl && ta.value.trim()) {
+        for (var i = 0; i < cards.length; i++) {
+        if (cards[i].id === cardEl.dataset.id) {
+          if (cards[i]._addingNote) cards[i]._addingNote = false
+          cards[i].notes.push(ta.value.trim())
+          break
+          }
+        }
+        render()
+      }
+    }
+  }
+})
+
+function toggleNote(id) {
+  for (var i = 0; i < cards.length; i++) {
+    if (cards[i].id === id) {
+      cards[i]._expanded = !cards[i]._expanded
+      if (!cards[i]._expanded) cards[i]._addingNote = false
+      render()
+      return
+    }
+  }
+}
+
+var dropBodies = document.querySelectorAll('.col-body')
+for (var i = 0; i < dropBodies.length; i++) {
+  dropBodies[i].addEventListener('dragover', function(e) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    this.closest('.col').classList.add('drag-over')
+  })
+  dropBodies[i].addEventListener('dragleave', function(e) {
+    this.closest('.col').classList.remove('drag-over')
+  })
+  dropBodies[i].addEventListener('drop', function(e) {
+    e.preventDefault()
+    var col = this.closest('.col')
+    col.classList.remove('drag-over')
+    var colName = col.dataset.col
+    var id = e.dataTransfer.getData('text/plain')
+    if (id) moveCard(id, colName)
+  })
+}
+
+function closeAllNoteMenus() {
+  var menus = document.querySelectorAll('.note-menu-dropdown.open')
+  for (var i = 0; i < menus.length; i++) menus[i].classList.remove('open')
+}
+document.addEventListener('click', function() { closeAllNoteMenus(); document.getElementById('importBulkDropdown').classList.remove('open'); closeAllBoardMenus() })
+
+/* Sidebar toggle */
+var sidebarEl = document.getElementById('sidebar')
+var sidebarOverlay = document.getElementById('sidebarOverlay')
+var hamburgerBtn = document.getElementById('hamburgerBtn')
+
+function loadSidebarState() {
+  if (localStorage.getItem('ps-sidebar-collapsed') === 'true' && window.innerWidth > 768) {
+    sidebarEl.classList.add('collapsed')
+    document.getElementById('sidebarCollapseBtn').innerHTML = '<i data-lucide="chevron-right" class="icon-xs"></i>'
+  }
+}
+
+function toggleSidebarCollapse() {
+  sidebarEl.classList.toggle('collapsed')
+  localStorage.setItem('ps-sidebar-collapsed', sidebarEl.classList.contains('collapsed'))
+  var btn = document.getElementById('sidebarCollapseBtn')
+  btn.innerHTML = sidebarEl.classList.contains('collapsed')
+    ? '<i data-lucide="chevron-right" class="icon-xs"></i>'
+    : '<i data-lucide="chevron-left" class="icon-xs"></i>'
+  lucide.createIcons()
+}
+
+function openSidebarMobile() {
+  sidebarEl.classList.add('open')
+  sidebarOverlay.classList.add('open')
+}
+
+function closeSidebarMobile() {
+  sidebarEl.classList.remove('open')
+  sidebarOverlay.classList.remove('open')
+}
+
+document.getElementById('sidebarCollapseBtn').addEventListener('click', toggleSidebarCollapse)
+hamburgerBtn.addEventListener('click', openSidebarMobile)
+sidebarOverlay.addEventListener('click', closeSidebarMobile)
+
+/* Auto-close sidebar on board select (mobile) */
+document.querySelector('.sidebar').addEventListener('click', function(e) {
+  var item = e.target.closest('.board-item')
+  if (item) closeSidebarMobile()
+})
+
+/* Sidebar collapsed on window resize */
+var resizeTimer
+window.addEventListener('resize', function() {
+  clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(function() {
+    if (window.innerWidth > 768) {
+      sidebarOverlay.classList.remove('open')
+      sidebarEl.classList.remove('open')
+      if (localStorage.getItem('ps-sidebar-collapsed') === 'true') {
+        sidebarEl.classList.add('collapsed')
+      }
+    } else {
+      sidebarEl.classList.remove('collapsed')
+    }
+  }, 150)
+})
+
+loadSidebarState()
+render()
+renderSidebar()
+</script>
+</body>
+</html>
